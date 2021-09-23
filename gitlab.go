@@ -206,8 +206,8 @@ type RateLimiter interface {
 
 // NewClient returns a new GitLab API client. To use API methods which require
 // authentication, provide a valid private or personal token.
-func NewClient(token string, options ...ClientOptionFunc) (*Client, error) {
-	client, err := newClient(options...)
+func NewClient(hc *retryablehttp.Client, token string, options ...ClientOptionFunc) (*Client, error) {
+	client, err := newClient(hc, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -218,8 +218,8 @@ func NewClient(token string, options ...ClientOptionFunc) (*Client, error) {
 
 // NewBasicAuthClient returns a new GitLab API client. To use API methods which
 // require authentication, provide a valid username and password.
-func NewBasicAuthClient(username, password string, options ...ClientOptionFunc) (*Client, error) {
-	client, err := newClient(options...)
+func NewBasicAuthClient(hc *retryablehttp.Client, username, password string, options ...ClientOptionFunc) (*Client, error) {
+	client, err := newClient(hc, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +233,8 @@ func NewBasicAuthClient(username, password string, options ...ClientOptionFunc) 
 
 // NewJobClient returns a new GitLab API client. To use API methods which require
 // authentication, provide a valid job token.
-func NewJobClient(token string, options ...ClientOptionFunc) (*Client, error) {
-	client, err := newClient(options...)
+func NewJobClient(hc *retryablehttp.Client, token string, options ...ClientOptionFunc) (*Client, error) {
+	client, err := newClient(hc, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -245,8 +245,8 @@ func NewJobClient(token string, options ...ClientOptionFunc) (*Client, error) {
 
 // NewOAuthClient returns a new GitLab API client. To use API methods which
 // require authentication, provide a valid oauth token.
-func NewOAuthClient(token string, options ...ClientOptionFunc) (*Client, error) {
-	client, err := newClient(options...)
+func NewOAuthClient(hc *retryablehttp.Client, token string, options ...ClientOptionFunc) (*Client, error) {
+	client, err := newClient(hc, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -255,18 +255,22 @@ func NewOAuthClient(token string, options ...ClientOptionFunc) (*Client, error) 
 	return client, nil
 }
 
-func newClient(options ...ClientOptionFunc) (*Client, error) {
+func newClient(hc *retryablehttp.Client, options ...ClientOptionFunc) (*Client, error) {
 	c := &Client{UserAgent: userAgent}
 
 	// Configure the HTTP client.
-	c.client = &retryablehttp.Client{
-		Backoff:      c.retryHTTPBackoff,
-		CheckRetry:   c.retryHTTPCheck,
-		ErrorHandler: retryablehttp.PassthroughErrorHandler,
-		HTTPClient:   cleanhttp.DefaultPooledClient(),
-		RetryWaitMin: 100 * time.Millisecond,
-		RetryWaitMax: 400 * time.Millisecond,
-		RetryMax:     5,
+	if hc == nil {
+		c.client = &retryablehttp.Client{
+			Backoff:      c.retryHTTPBackoff,
+			CheckRetry:   c.retryHTTPCheck,
+			ErrorHandler: retryablehttp.PassthroughErrorHandler,
+			HTTPClient:   cleanhttp.DefaultPooledClient(),
+			RetryWaitMin: 100 * time.Millisecond,
+			RetryWaitMax: 400 * time.Millisecond,
+			RetryMax:     5,
+		}
+	} else {
+		c.client = hc
 	}
 
 	// Set the default base URL.
